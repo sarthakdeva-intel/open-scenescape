@@ -72,6 +72,8 @@ RUN : \
         netbase \
         python3-pip \
         sudo \
+        # for perf
+        linux-tools-$(uname -r) \
     && rm -rf /usr/lib/x86_64-linux-gnu/libLLVM-15.so.1 \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
