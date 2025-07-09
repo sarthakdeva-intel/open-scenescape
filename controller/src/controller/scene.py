@@ -6,8 +6,8 @@ import cv2
 import itertools
 import numpy as np
 
-from controller.ilabs_tracking import IntelLabsTracking
-from controller.tracking import (MAX_UNRELIABLE_TIME,
+from robot_vision.cpp_tracking import IntelLabsTracking
+from robot_vision.cpp_tracking import (MAX_UNRELIABLE_TIME,
                                  NON_MEASUREMENT_TIME_DYNAMIC,
                                  NON_MEASUREMENT_TIME_STATIC)
 from scene_common import log

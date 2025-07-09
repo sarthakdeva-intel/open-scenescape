@@ -14,8 +14,20 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN : \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
-        libopencv-dev \
         python3-venv \
+        libgl1 \
+        libopencv-dev \
+        libpython3.10 \
+        libeigen3-dev \
+        python3-dev \
+        python3-pip \
+        pybind11-dev \
+        netbase \
+        sudo \
+        xtensor-dev \
+        uuid-dev \
+        make \
+        g++ \
     && rm -rf /var/lib/apt/lists/*
 
 # create and set up Python virtual environment

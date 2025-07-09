@@ -202,9 +202,8 @@ private:
 
   Id mCurrentId = 0;
 
-  bool mAutoIdGeneration{true};
-
   TrackManagerConfig mConfig;
+  bool mAutoIdGeneration{true};
 };
 
 } // namespace tracking

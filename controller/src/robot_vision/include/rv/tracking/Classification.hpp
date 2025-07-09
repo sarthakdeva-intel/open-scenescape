@@ -57,7 +57,7 @@ public:
 
   inline std::string getClass(const Classification & classification) const
   {
-    if (classes.size() != classification.size())
+    if (classes.size() != static_cast<std::size_t>(classification.size()))
     {
       throw std::runtime_error("Invalid classification probability size");
     }

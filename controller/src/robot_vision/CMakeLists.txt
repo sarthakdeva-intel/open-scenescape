@@ -24,7 +24,7 @@ include(CMakePackageConfigHelpers)
 
 project(RobotVision VERSION 1.1.0)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(PROJECT_NAMESPACE rv)
 
 set(ROBOT_VISION_BUILD_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/install)
@@ -53,6 +53,11 @@ set(PROJECT_SOURCE_LIST
   ${CMAKE_SOURCE_DIR}/src/rv/tracking/Classification.cpp
   ${CMAKE_SOURCE_DIR}/src/rv/tracking/MultipleObjectTracker.cpp
   ${CMAKE_SOURCE_DIR}/src/rv/tracking/TrackTracker.cpp
+  ${CMAKE_SOURCE_DIR}/src/rv/tracking/point.cpp
+  ${CMAKE_SOURCE_DIR}/src/rv/tracking/rectangle.cpp
+  ${CMAKE_SOURCE_DIR}/src/rv/tracking/moving_object.cpp
+  ${CMAKE_SOURCE_DIR}/src/rv/tracking/tracking.cpp
+  ${CMAKE_SOURCE_DIR}/src/rv/tracking/ilabs_tracking.cpp
   ${CMAKE_SOURCE_DIR}/src/rv/apollo/connected_component_analysis.cpp
   ${CMAKE_SOURCE_DIR}/src/rv/apollo/multi_hm_bipartite_graph_matcher.cpp
 )
@@ -67,19 +72,19 @@ ${EIGEN3_INCLUDE_DIR}
 ${PYTHON_INCLUDE_DIRS}
 ${pybind11_INCLUDE_DIRS})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS} ${Python_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS} ${Python_LIBRARIES} uuid)
 
 set(TRACKING_MODULE_SOURCE_LIST
-  ${CMAKE_SOURCE_DIR}/python/src/robot_vision/extensions/tracking.cpp
+  ${CMAKE_SOURCE_DIR}/python/src/robot_vision/extensions/cpp_tracking.cpp
 )
 
-pybind11_add_module(tracking MODULE ${TRACKING_MODULE_SOURCE_LIST})
-target_link_libraries(tracking PUBLIC ${PROJECT_NAME})
+pybind11_add_module(cpp_tracking MODULE ${TRACKING_MODULE_SOURCE_LIST})
+target_link_libraries(cpp_tracking PUBLIC ${PROJECT_NAME})
 
 pybind11_add_module(types MODULE  ${CMAKE_SOURCE_DIR}/python/src/robot_vision/extensions/types.cpp)
 target_link_libraries(types PUBLIC ${PROJECT_NAME})
 
-set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
+set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 
 #####################################################################
 # install
