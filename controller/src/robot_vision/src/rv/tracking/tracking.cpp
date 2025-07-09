@@ -70,7 +70,7 @@ void Tracking::trackObjects(const std::vector<std::shared_ptr<MovingObject>>& ob
 void Tracking::updateRefCameraFrameRate(float ref_camera_frame_rate, const std::string& category) {
     if (trackers.count(category) && trackers[category]->ref_camera_frame_rate != ref_camera_frame_rate) {
         trackers[category]->ref_camera_frame_rate = ref_camera_frame_rate;
-        // trackers[category]->tracker.update_tracker_params(ref_camera_frame_rate); // Stub
+        trackers[category]->tracker.updateTrackerParams(ref_camera_frame_rate);
     }
 }
 
@@ -80,7 +80,6 @@ void Tracking::createTrackers(const std::vector<std::string>& categories,
                              float non_measurement_time_static) {
     for (const auto& category : categories) {
         if (!trackers.count(category)) {
-            // Use the factory method to create the correct subclass
             auto tracker = createTrackerInstance(max_unreliable_time, non_measurement_time_dynamic, non_measurement_time_static);
             trackers[category] = tracker;
             tracker->worker_thread = std::thread(&Tracking::run, tracker.get());
