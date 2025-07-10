@@ -51,12 +51,9 @@ RUN : \
     && cd /tmp/scene_common \
     && mv src scene_common \
     && pip3 install --no-cache-dir pybind11 \
-    && pip3 install --use-pep517 --no-cache-dir . \
-    && cd scene_common/fast_geometry \
-    && python3 -c "import sys; print(f'Python version: {sys.version}'); print(f'Python path: {sys.path}')" \
-    && make -j $(nproc) all install \
-    && cd /tmp \
-    && python3 -c "import fast_geometry; print('fast_geometry imported successfully')" \
+    && pip3 install  --use-pep517 --no-cache-dir . \
+    && make -C scene_common/fast_geometry -j $(nproc) all install \
+    && cd .. \
     && rm -rf scene_common
 
 COPY ./tools/waitforbroker /tmp/tools/waitforbroker
