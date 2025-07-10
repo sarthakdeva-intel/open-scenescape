@@ -1,5 +1,5 @@
 ntplib
-numpy==1.26.4
+numpy
 open3d-cpu
 opencv-python-headless
 paho-mqtt
