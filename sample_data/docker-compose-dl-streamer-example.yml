@@ -123,6 +123,11 @@ services:
   scene:
     image: scenescape-controller:${VERSION:-latest}
     init: true
+    cap_add:
+      - SYS_ADMIN
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
     networks:
       scenescape:
     depends_on:
