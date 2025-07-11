@@ -107,6 +107,7 @@ ENV WSUSER=scenescape
 ENV SCENESCAPE_HOME=/home/$WSUSER/SceneScape
 ENV BUILD_ENV_DIR=/tmp/venv
 ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONPERFSUPPORT=1
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 USER root

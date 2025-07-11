@@ -37,7 +37,7 @@ CFLAGS += -DLIBRARY_NAME=$(TARGET)
 LDFLAGS=$(shell pkg-config --libs opencv4)
 
 # Suffix used for pybind library name
-LIB_SUFFIX=$(shell python3-config --extension-suffix)
+LIB_SUFFIX=$(shell python3 -c "import sysconfig; print(sysconfig.get_config_var('EXT_SUFFIX'))")
 
 # Find python version
 PYTHON_VERSION = $(shell python3 -c "import sys; print(f'python{sys.version_info.major}.{sys.version_info.minor}')")
