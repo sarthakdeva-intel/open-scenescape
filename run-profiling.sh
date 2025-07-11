@@ -9,7 +9,7 @@
 # - https://www.slideshare.net/brendangregg/kernel-recipes-2017-using-linux-perf-at-netflix#31
 # - https://blog.alicegoldfuss.com/making-flamegraphs-with-containerized-java/
 
-FLAMEGRAPH_DIR=/home/labrat/tdorau/repos/FlameGraph
+FLAMEGRAPH_DIR=${PWD}/FlameGraph
 
 : "${DURATION:=10}"
 : "${SAMPLING_FREQ:=99}"
@@ -47,6 +47,11 @@ CONTAINER_ID=$(docker ps -q --filter "name=scenescape-scene-1")
 FULL_CONTAINER_ID=$(docker ps --no-trunc | grep ${CONTAINER_ID} | awk '{print $1 }')
 HOST_PID=$(echo $(pgrep -f "python3 /home/scenescape/SceneScape/controller-cmd") | tr -d '\r')
 CONTAINER_PID=$(echo $(docker exec -it ${CONTAINER_ID} pgrep -f python3) | tr -d '\r')
+
+if [[ "$(cat /proc/sys/kernel/perf_event_paranoid)" != "-1" ]]; then
+    echo "Error: /proc/sys/kernel/perf_event_paranoid must be set to -1 for profiling. Please run: sudo sysctl -w kernel.perf_event_paranoid=-1"
+    exit 1
+fi
 
 # summary
 summary() {
@@ -102,7 +107,7 @@ sudo perf script > out.perf
 sudo $FLAMEGRAPH_DIR/stackcollapse-perf.pl out.perf > out.folded
 sudo $FLAMEGRAPH_DIR/flamegraph.pl out.folded > flamegraph.svg
 echo "Results written to output directory: $OUTDIR"
-sudo chown labrat:labrat ./*
+sudo chown $(id -un):$(id -gn) ./*
 
 perf report -n --stdio
 
