@@ -19,7 +19,7 @@ pushd $(pwd)
 
 CONTAINER_ID=$(docker ps -q --filter "name=scenescape-scene-1")
 FULL_CONTAINER_ID=$(docker ps --no-trunc | grep ${CONTAINER_ID} | awk '{print $1 }')
-HOST_PID=$(echo $(pgrep -f "python3 /home/scenescape/SceneScape/controller-cmd") | tr -d '\r') #$(docker inspect --format '{{.State.Pid}}' ${CONTAINER_ID})
+HOST_PID=$(echo $(pgrep -f "python3 /home/scenescape/SceneScape/controller-cmd") | tr -d '\r')
 CONTAINER_PID=$(echo $(docker exec -it ${CONTAINER_ID} pgrep -f python3) | tr -d '\r')
 
 # summary
