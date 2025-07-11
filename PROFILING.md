@@ -11,6 +11,7 @@ This guide explains how to profile the SceneScape application using Linux perf t
 - [Brendan Gregg's talk at Netflix](https://www.youtube.com/watch?v=UVM3WX8Lq2k) - general understanding of flamegraphs, profiling challenges and how perf can help
 - [Kernel Recipes 2017 slides](https://www.slideshare.net/brendangregg/kernel-recipes-2017-using-linux-perf-at-netflix#31)
 - [Making flamegraphs with containerized Java](https://blog.alicegoldfuss.com/making-flamegraphs-with-containerized-java/) - the same hack is used here for Python
+- [Docker documentation about cgroups](https://docs.docker.com/engine/containers/runmetrics/)
 
 ## Limitations
 
