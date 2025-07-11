@@ -3,7 +3,13 @@
 FLAMEGRAPH_DIR=/home/labrat/tdorau/repos/FlameGraph
 PATH=$PATH:$FLAMEGRAPH_DIR
 
-PROFILE_NAME=$1
+DEFAULT_PROFILE="on-host-cgroup"
+# Profile can be one of:
+# - on-host-cgroup: profile the container using cgroup
+# - on-host-by-pid: profile the host process by PID
+# - in-container: profile the container process directly
+PROFILE=${1:-$DEFAULT_PROFILE}
+
 # can be one of: fp, dwarf, lbr
 UNWIND_METHOD=${2:-fp}
 
@@ -19,7 +25,7 @@ CONTAINER_PID=$(echo $(docker exec -it ${CONTAINER_ID} pgrep -f python3) | tr -d
 
 # summary
 summary() {
-    echo "Profile Name: ${PROFILE_NAME}"
+    echo "Profile Name: ${PROFILE}"
     echo "Unwind Method: ${UNWIND_METHOD}"
     echo "Duration: ${DURATION} seconds"
     echo "Sampling Frequency: ${SAMPLING_FREQ} Hz"
@@ -34,31 +40,31 @@ summary() {
     echo "Host Python HAVE_PERF_TRAMPOLINE: $(docker exec -it ${CONTAINER_ID} python -m sysconfig | grep HAVE_PERF_TRAMPOLINE)"
 }
 
-OUTDIR="perf-out-$PROFILE_NAME-$(date '+%Y-%m-%d_%H-%M-%S')"
+OUTDIR="perf-out-${PROFILE}-$(date '+%Y-%m-%d_%H-%M-%S')"
 mkdir -p "$OUTDIR"
 cd "$OUTDIR"
 
-# perf commands
+# perf profiles
 on-host-cgroup() {
     echo "Type Ctrl+C to stop profiling..."
-    echo "Profiling for ${DURATION} seconds..."
     sudo perf record -F ${SAMPLING_FREQ} --call-graph ${UNWIND_METHOD} -e cpu-clock --cgroup system.slice/docker-${FULL_CONTAINER_ID}.scope -g
 }
 
 on-host-by-pid() {
+    echo "Profiling for ${DURATION} seconds..."
     sudo perf record -F 1${SAMPLING_FREQ} -p ${HOST_PID} -g -- sleep ${DURATION}
 }
 
 in-container() {
     # in-container-${UNWIND_METHOD}:
+    echo "Profiling for ${DURATION} seconds..."
     docker exec -t ${CONTAINER_ID} perf record -F ${SAMPLING_FREQ} -p ${CONTAINER_PID} -g --call-graph ${UNWIND_METHOD} -- sleep ${DURATION}
     docker exec ${CONTAINER_ID} mv perf.data /home/scenescape/SceneScape/media/perf.data
     docker run -v ./:/output -v scenescape_vol-media:/input alpine mv /input/perf.data /output
 }
 
 summary
-# on-host-cgroup
-on-host-by-pid
+eval ${PROFILE}
 
 sudo chown labrat:labrat perf.data
 echo "Profiling data saved to: $OUTDIR/perf.data"
