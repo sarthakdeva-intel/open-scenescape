@@ -61,7 +61,7 @@ summary() {
     echo "Container Python version: $(docker exec -it ${CONTAINER_ID} python3 --version)"
     echo "Container Python HAVE_PERF_TRAMPOLINE: $(docker exec -it ${CONTAINER_ID} python3 -m sysconfig | grep HAVE_PERF_TRAMPOLINE)"
     echo "Host Python version: $(python3 --version)"
-    echo "Host Python HAVE_PERF_TRAMPOLINE: $(docker exec -it ${CONTAINER_ID} python3 -m sysconfig | grep HAVE_PERF_TRAMPOLINE)"
+    echo "Host Python HAVE_PERF_TRAMPOLINE: $(python3 -m sysconfig | grep HAVE_PERF_TRAMPOLINE)"
 }
 
 OUTDIR="perf-out-${PROFILE}-$(date '+%Y-%m-%d_%H-%M-%S')"

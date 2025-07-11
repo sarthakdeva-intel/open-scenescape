@@ -18,6 +18,8 @@ The script and the code on this branch is designed to profile specifically the C
 
 The subsequent profiling runs for the same container may not produce good results as the first run. Therefore, it is suggested to restart the service before next profiling run.
 
+For `on-host-cgroup` profile the duration is decided by the user who stops profiling with Ctrl+C, so DURATION variable has no effect.
+
 ## Prerequisites
 
 1. **Install perf tools:**
