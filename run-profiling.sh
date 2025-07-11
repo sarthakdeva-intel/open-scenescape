@@ -73,7 +73,7 @@ on-host-cgroup() {
     echo "Type Ctrl+C to stop profiling..."
     sudo perf record -F ${SAMPLING_FREQ} --call-graph ${UNWIND_METHOD} -e cpu-clock --cgroup system.slice/docker-${FULL_CONTAINER_ID}.scope -g
     docker exec ${CONTAINER_ID} mv /tmp/perf-${CONTAINER_PID}.map /home/scenescape/SceneScape/media
-    docker run -v ./:/output -v scenescape_vol-media:/input alpine mv /input/perf-${CONTAINER_PID}.map /output/perf-${HOST_PID}.map
+    docker run --rm -v ./:/output -v scenescape_vol-media:/input alpine mv /input/perf-${CONTAINER_PID}.map /output/perf-${HOST_PID}.map
     sudo cp perf-${HOST_PID}.map /tmp
 }
 
@@ -81,7 +81,7 @@ on-host-by-pid() {
     echo "Profiling for ${DURATION} seconds..."
     sudo perf record -F 1${SAMPLING_FREQ} -p ${HOST_PID} -g -- sleep ${DURATION}
     docker exec ${CONTAINER_ID} mv /tmp/perf-${CONTAINER_PID}.map /home/scenescape/SceneScape/media
-    docker run -v ./:/output -v scenescape_vol-media:/input alpine mv /input/perf-${CONTAINER_PID}.map /output/perf-${HOST_PID}.map
+    docker run --rm -v ./:/output -v scenescape_vol-media:/input alpine mv /input/perf-${CONTAINER_PID}.map /output/perf-${HOST_PID}.map
     sudo cp perf-${HOST_PID}.map /tmp
 }
 
@@ -90,7 +90,7 @@ in-container() {
     echo "Profiling for ${DURATION} seconds..."
     docker exec -t ${CONTAINER_ID} perf record -F ${SAMPLING_FREQ} -p ${CONTAINER_PID} -g --call-graph ${UNWIND_METHOD} -- sleep ${DURATION}
     docker exec ${CONTAINER_ID} mv perf.data /home/scenescape/SceneScape/media/perf.data
-    docker run -v ./:/output -v scenescape_vol-media:/input alpine mv /input/perf.data /output
+    docker run --rm -v ./:/output -v scenescape_vol-media:/input alpine mv /input/perf.data /output
 }
 
 summary
