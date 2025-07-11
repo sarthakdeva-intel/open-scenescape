@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# useful sources:
+# - https://www.brendangregg.com/perf.html
+# - https://docs.python.org/3.12/howto/perf_profiling.html
+# - https://docs.python.org/3/howto/perf_profiling.html
+# Talk by Brendan Gregg at Netflix:
+# - https://www.youtube.com/watch?v=UVM3WX8Lq2k
+# - https://www.slideshare.net/brendangregg/kernel-recipes-2017-using-linux-perf-at-netflix#31
+# - https://blog.alicegoldfuss.com/making-flamegraphs-with-containerized-java/
+
 FLAMEGRAPH_DIR=/home/labrat/tdorau/repos/FlameGraph
 
 DEFAULT_PROFILE="on-host-cgroup"
