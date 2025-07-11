@@ -11,18 +11,35 @@
 
 FLAMEGRAPH_DIR=/home/labrat/tdorau/repos/FlameGraph
 
+: "${DURATION:=10}"
+: "${SAMPLING_FREQ:=99}"
+
 DEFAULT_PROFILE="on-host-cgroup"
 # Profile can be one of:
 # - on-host-cgroup: profile the container using cgroup
 # - on-host-by-pid: profile the host process by PID
 # - in-container: profile the container process directly
+ALLOWED_PROFILES=("on-host-cgroup" "on-host-by-pid" "in-container")
 PROFILE=${1:-$DEFAULT_PROFILE}
+
+show_help() {
+    echo "Usage: $0 [PROFILE] [UNWIND_METHOD]"
+    echo "  ALLOWED PROFILES: ${ALLOWED_PROFILES[*]} (default: ${DEFAULT_PROFILE})"
+    echo "  UNWIND_METHOD: fp, dwarf, or lbr (default: fp)"
+    exit 1
+}
+
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    show_help
+fi
+
+if [[ ! " ${ALLOWED_PROFILES[@]} " =~ " ${PROFILE} " ]]; then
+    echo "Error: Invalid profile '${PROFILE}'."
+    show_help
+fi
 
 # can be one of: fp, dwarf, lbr
 UNWIND_METHOD=${2:-fp}
-
-: "${DURATION:=10}"
-: "${SAMPLING_FREQ:=99}"
 
 pushd $(pwd)
 
