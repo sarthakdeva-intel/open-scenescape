@@ -9,7 +9,14 @@
 # - https://www.slideshare.net/brendangregg/kernel-recipes-2017-using-linux-perf-at-netflix#31
 # - https://blog.alicegoldfuss.com/making-flamegraphs-with-containerized-java/
 
-FLAMEGRAPH_DIR=${PWD}/FlameGraph
+# prerequisites:
+# - install perf: `sudo apt install linux-tools-common linux-tools-generic linux-tools-$(uname -r)`
+# - install FlameGraph: `git clone https://github.com/brendangregg/FlameGraph.git`
+# - adjust FLAMEGRAPH_DIR below to point to the FlameGraph directory
+# - run: `sudo sysctl -w kernel.perf_event_paranoid=-1` to enable CPU profiling
+
+# adjust if needed
+FLAMEGRAPH_DIR=${PWD}/../FlameGraph
 
 : "${DURATION:=10}"
 : "${SAMPLING_FREQ:=99}"
