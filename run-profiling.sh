@@ -1,7 +1,6 @@
 #!/bin/bash
 
 FLAMEGRAPH_DIR=/home/labrat/tdorau/repos/FlameGraph
-PATH=$PATH:$FLAMEGRAPH_DIR
 
 DEFAULT_PROFILE="on-host-cgroup"
 # Profile can be one of:
@@ -48,11 +47,17 @@ cd "$OUTDIR"
 on-host-cgroup() {
     echo "Type Ctrl+C to stop profiling..."
     sudo perf record -F ${SAMPLING_FREQ} --call-graph ${UNWIND_METHOD} -e cpu-clock --cgroup system.slice/docker-${FULL_CONTAINER_ID}.scope -g
+    docker exec ${CONTAINER_ID} mv /tmp/perf-${CONTAINER_PID}.map /home/scenescape/SceneScape/media
+    docker run -v ./:/output -v scenescape_vol-media:/input alpine mv /input/perf-${CONTAINER_PID}.map /output/perf-${HOST_PID}.map
+    sudo cp perf-${HOST_PID}.map /tmp
 }
 
 on-host-by-pid() {
     echo "Profiling for ${DURATION} seconds..."
     sudo perf record -F 1${SAMPLING_FREQ} -p ${HOST_PID} -g -- sleep ${DURATION}
+    docker exec ${CONTAINER_ID} mv /tmp/perf-${CONTAINER_PID}.map /home/scenescape/SceneScape/media
+    docker run -v ./:/output -v scenescape_vol-media:/input alpine mv /input/perf-${CONTAINER_PID}.map /output/perf-${HOST_PID}.map
+    sudo cp perf-${HOST_PID}.map /tmp
 }
 
 in-container() {
@@ -66,12 +71,13 @@ in-container() {
 summary
 eval ${PROFILE}
 
-sudo chown labrat:labrat perf.data
 echo "Profiling data saved to: $OUTDIR/perf.data"
-perf script > out.perf
-stackcollapse-perf.pl out.perf > out.folded
-flamegraph.pl out.folded > flamegraph.svg
+sudo perf script > out.perf
+sudo $FLAMEGRAPH_DIR/stackcollapse-perf.pl out.perf > out.folded
+sudo $FLAMEGRAPH_DIR/flamegraph.pl out.folded > flamegraph.svg
 echo "Results written to output directory: $OUTDIR"
+sudo chown labrat:labrat ./*
+
 perf report -n --stdio
 
 popd
