@@ -123,8 +123,8 @@ RUN : \
         python3-pip \
         python3.12-venv \
         sudo \
-        # for perf
-        linux-tools-$(uname -r) \
+        # needed by perf, try `linux-tools-$(uname -r)` instead, if perf doesn't work inside the container
+        linux-tools-generic \
     && rm -rf /usr/lib/x86_64-linux-gnu/libLLVM-15.so.1 \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
