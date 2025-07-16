@@ -159,6 +159,7 @@ PYBIND11_MODULE( LIBRARY_NAME, m) {
     py::class_<Polygon>(m, "Polygon")
         .def(py::init<const std::vector<std::pair<double, double>>&>())
         .def("getVertices", &Polygon::getVertices)
-        .def("isPointInside", &Polygon::isPointInside);
+        .def("isPointInside", &Polygon::isPointInside)
+        .def("isPointsInside", &Polygon::isPointsInside);
 
 }

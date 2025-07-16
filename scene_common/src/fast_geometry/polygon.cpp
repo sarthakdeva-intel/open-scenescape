@@ -37,3 +37,34 @@ bool Polygon::isPointInside(double px, double py) const
     return inside;
 }
 
+std::vector<bool> Polygon::isPointsInside(const std::vector<std::pair<double, double>>& points) const
+{
+    std::vector<bool> results;
+    results.reserve(points.size());
+
+    int n = this->vertices.size();
+
+    for (const auto& point : points) {
+        double px = point.first;
+        double py = point.second;
+        bool inside = false;
+
+        for (int i = 0, j = n - 1; i < n; j = i++)
+        {
+            double xi = this->vertices[i].first;
+            double yi = this->vertices[i].second;
+            double xj = this->vertices[j].first;
+            double yj = this->vertices[j].second;
+
+            bool intersect = ((yi > py) != (yj > py))
+                              && px < ((xj - xi) * (py - yi) / (yj - yi) + xi);
+            if (intersect)
+            {
+                inside = !inside;
+            }
+        }
+        results.push_back(inside);
+    }
+    return results;
+}
+

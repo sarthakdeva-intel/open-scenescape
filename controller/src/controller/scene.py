@@ -108,11 +108,16 @@ class Scene(SceneModel):
 
   def _createMovingObjectsForDetection(self, detectionType, detections, when, camera):
     objects = []
+
+    scene_map_triangle_mesh = self.map_triangle_mesh
+    scene_map_translation = self.mesh_translation
+    scene_map_rotation = self.mesh_rotation
+
     for info in detections:
       mobj = self.tracker.createObject(detectionType, info, when, camera)
-      mobj.map_triangle_mesh = self.map_triangle_mesh
-      mobj.map_translation = self.mesh_translation
-      mobj.map_rotation = self.mesh_rotation
+      mobj.map_triangle_mesh = scene_map_triangle_mesh
+      mobj.map_translation = scene_map_translation
+      mobj.map_rotation = scene_map_rotation
       objects.append(mobj)
     return objects
 
@@ -282,15 +287,26 @@ class Scene(SceneModel):
 
   def updateRegionEvents(self, detectionType, regions, now, now_str):
     updated = set()
-    for key in regions:
-      region = regions[key]
+    curObjects = self.tracker.currentObjects(detectionType)
+
+    if not curObjects:
+      return updated
+
+    mature_objects = [obj for obj in curObjects if obj.frameCount > 3]
+
+    if not mature_objects:
+      return updated
+
+    object_coords = [(obj.sceneLoc.x, obj.sceneLoc.y) for obj in mature_objects]
+
+    for key, region in regions.items():
       regionObjects = region.objects.get(detectionType, [])
-      objects = []
-      curObjects = self.tracker.currentObjects(detectionType)
-      for obj in curObjects:
-        if obj.frameCount > 3 \
-           and region.isPointWithin(obj.sceneLoc):
-          objects.append(obj)
+
+      if hasattr(region, 'polygon') and region.polygon is not None:
+        visibility_results = region.polygon.isPointsInside(object_coords)
+        objects = [obj for obj, is_visible in zip(mature_objects, visibility_results) if is_visible]
+      else:
+        objects = [obj for obj in mature_objects if region.isPointWithin(obj.sceneLoc)]
 
       cur = set(x.gid for x in objects)
       prev = set(x.gid for x in regionObjects)
@@ -345,16 +361,38 @@ class Scene(SceneModel):
 
   def updateVisible(self, curObjects):
     """! Update the visibility of objects from cameras in the scene."""
-    for obj in curObjects:
-      vis = []
+    if not curObjects:
+      return
 
-      for sname in self.cameras:
-        camera = self.cameras[sname]
-        if hasattr(camera, 'pose') and hasattr(camera.pose, 'regionOfView') \
-           and camera.pose.regionOfView.isPointWithin(obj.sceneLoc):
-          vis.append(camera.cameraID)
+    valid_cameras = []
+    for sname, camera in self.cameras.items():
+      if hasattr(camera, 'pose') and hasattr(camera.pose, 'regionOfView'):
+        valid_cameras.append((sname, camera))
 
-      obj.visibility = vis
+    if not valid_cameras:
+      for obj in curObjects:
+        obj.visibility = []
+      return
+
+    object_coords = [(obj.sceneLoc.x, obj.sceneLoc.y) for obj in curObjects]
+
+    for sname, camera in valid_cameras:
+      region = camera.pose.regionOfView
+
+      if hasattr(region, 'polygon') and region.polygon is not None:
+        visibility_results = region.polygon.isPointsInside(object_coords)
+        for obj, is_visible in zip(curObjects, visibility_results):
+          if not hasattr(obj, 'visibility'):
+            obj.visibility = []
+          if is_visible:
+            obj.visibility.append(camera.cameraID)
+      else:
+        for obj in curObjects:
+          if not hasattr(obj, 'visibility'):
+            obj.visibility = []
+          if region.isPointWithin(obj.sceneLoc):
+            obj.visibility.append(camera.cameraID)
+
     return
 
   @classmethod

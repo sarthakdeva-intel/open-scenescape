@@ -22,6 +22,9 @@ class Polygon
     // Method to check if a point is inside the region
     bool isPointInside(double px, double py) const ;
 
+    // Batch method to check multiple points at once
+    std::vector<bool> isPointsInside(const std::vector<std::pair<double, double>>& points) const ;
+
   private:
     std::vector<std::pair<double, double>> vertices;
     int region_type;

@@ -3,11 +3,9 @@
 # This file is licensed under the Limited Edge Software Distribution License Agreement.
 
 import time
-from datetime import datetime
-from pytz import timezone
+from datetime import datetime, timezone
 
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
-TIMEZONE = "UTC"
 
 def get_iso_time(timestamp: float=None) -> str:
   """! Returns ISO 8601 timestamp in UTC as string.
@@ -18,7 +16,7 @@ def get_iso_time(timestamp: float=None) -> str:
   if timestamp is None:
     timestamp = time.time()
 
-  utc_time = datetime.fromtimestamp(timestamp, tz=timezone(TIMEZONE))
+  utc_time = datetime.fromtimestamp(timestamp, tz=timezone.utc)
   return f"{utc_time.strftime(DATETIME_FORMAT)[:-3]}Z"
 
 def get_epoch_time(timestamp: str=None) -> float:
@@ -30,8 +28,8 @@ def get_epoch_time(timestamp: str=None) -> float:
   if not timestamp:
     return time.time()
 
-  utc_time = datetime.strptime(timestamp, f"{DATETIME_FORMAT}Z")
-  return utc_time.replace(tzinfo=timezone(TIMEZONE)).timestamp()
+  utc_time = datetime.strptime(timestamp, f"{DATETIME_FORMAT}Z").replace(tzinfo=timezone.utc)
+  return utc_time.timestamp()
 
 def adjust_time(now, server, client, lastTimeSync, timeOffset, exception):
   if server is not None and (not lastTimeSync or now - lastTimeSync > 300):
@@ -49,4 +47,4 @@ def get_datetime_from_string(date_string: str) -> datetime:
   @param      date_string    Date in string format.
   @return     Date as datetime object.
   """
-  return datetime.strptime(date_string, f"{DATETIME_FORMAT}Z").replace(tzinfo=timezone(TIMEZONE))
+  return datetime.strptime(date_string, f"{DATETIME_FORMAT}Z").replace(tzinfo=timezone.utc)

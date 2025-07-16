@@ -3,6 +3,7 @@
 # This file is licensed under the Limited Edge Software Distribution License Agreement.
 
 import json
+import orjson
 import os
 from collections import defaultdict
 
@@ -94,7 +95,7 @@ class SceneController:
     if olen > 0 or cid not in scene.lastPubCount or scene.lastPubCount[cid] > 0:
       if 'debug_hmo_start_time' in jdata:
         jdata['debug_hmo_processing_time'] = get_epoch_time() - jdata['debug_hmo_start_time']
-      jstr = json.dumps(jdata)
+      jstr = orjson.dumps(jdata)
       new_topic = PubSub.formatTopic(PubSub.DATA_SCENE, scene_id=scene.uid,
                                      thing_type=otype)
       self.pubsub.publish(new_topic, jstr)
@@ -131,12 +132,21 @@ class SceneController:
       # If we're doing Regulated visibility, then we need to compute for all
       # the objects in the cache
       objects = []
+      is_regulated = self.visibility_topic == 'regulated'
+
+      msg_objects_lookup = {}
+      if is_regulated:
+        for obj in msg_objects:
+          msg_objects_lookup[obj.gid] = obj
+
       for key in scene['objects']:
         for obj in scene['objects'][key]:
-          if self.visibility_topic == 'regulated':
-            aobj = next((x for x in msg_objects if x.gid == obj['id']), None)
-            computeCameraBounds(scene_obj, aobj, obj)
+          if is_regulated:
+            aobj = msg_objects_lookup.get(obj['id'])
+            if aobj:
+              computeCameraBounds(scene_obj, aobj, obj)
           objects.append(obj)
+
       new_jdata = {
         'timestamp': jdata['timestamp'],
         'objects': objects,
@@ -145,7 +155,7 @@ class SceneController:
         'scene_rate': round(1 / update_rate, 1),
         'rate': scene['rate'],
       }
-      jstr = json.dumps(new_jdata)
+      jstr = orjson.dumps(new_jdata)
       topic = PubSub.formatTopic(PubSub.DATA_REGULATED, scene_id=scene_uid)
       self.pubsub.publish(topic, jstr)
       scene['last'] = now
@@ -162,7 +172,7 @@ class SceneController:
       olen = len(jdata['objects'])
       rid = scene.name + "/" + rname + "/" + otype
       if olen > 0 or rid not in scene.lastPubCount or scene.lastPubCount[rid] > 0:
-        jstr = json.dumps(jdata)
+        jstr = orjson.dumps(jdata)
         new_topic = PubSub.formatTopic(PubSub.DATA_REGION, scene_id=scene.uid,
                                        region_id=rname, thing_type=otype)
         self.pubsub.publish(new_topic, jstr)
@@ -203,7 +213,7 @@ class SceneController:
           event_topic = PubSub.formatTopic(PubSub.EVENT,
                                            region_type=etype, event_type=event_type,
                                            scene_id=scene.uid, region_id=region.uuid)
-          self.pubsub.publish(event_topic, json.dumps(event_data))
+          self.pubsub.publish(event_topic, orjson.dumps(event_data))
 
     self._clearSensorValuesOnExit(scene)
 
@@ -270,7 +280,7 @@ class SceneController:
          "status": "green" }
     """
     message = message.payload.decode('utf-8')
-    jdata = json.loads(message)
+    jdata = orjson.loads(message)
 
     if not self.schema_val.validateMessage("singleton", jdata, check_format=True):
       return
@@ -299,7 +309,7 @@ class SceneController:
 
   def handleMovingObjectMessage(self, client, userdata, message):
     topic = PubSub.parseTopic(message.topic)
-    jdata = json.loads(message.payload.decode('utf-8'))
+    jdata = orjson.loads(message.payload.decode('utf-8'))
     if 'camera_id' in topic and not self.schema_val.validateMessage("detector", jdata):
       return
 
@@ -441,7 +451,7 @@ class SceneController:
     enables parent to visualize them.
     """
     topic = PubSub.parseTopic(message.topic)
-    msg = json.loads(message.payload.decode('utf-8'))
+    msg = orjson.loads(message.payload.decode('utf-8'))
 
     sender_id = topic['scene_id']
     sender = self.cache_manager.sceneWithID(sender_id)
@@ -469,7 +479,7 @@ class SceneController:
       msg['metadata']['from_child_scene'] = sender.name
     else:
       msg['metadata']['from_child_scene'] = sender.name + " > " + msg['metadata']['from_child_scene']
-    self.pubsub.publish(event_topic, json.dumps(msg))
+    self.pubsub.publish(event_topic, orjson.dumps(msg))
     return
 
   def transformObjectsinEvent(self, event, sender):
