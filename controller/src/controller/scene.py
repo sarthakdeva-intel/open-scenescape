@@ -154,7 +154,17 @@ class Scene(SceneModel):
             agnosticx, agnosticy, agnosticw, agnostich = self.computePixelsToMeterPlane(x, y, w, h,
                                   camera.pose.intrinsics.intrinsics, camera.pose.intrinsics.distortion)
             obj['bounding_box'] = {'x': agnosticx, 'y': agnosticy, 'width': agnosticw, 'height': agnostich}
-
+          # Handle license plates in car objects
+          if 'license_plates' in obj:
+            for lp in obj['license_plates']:
+              if 'bounding_box' not in lp and 'bounding_box_px' in lp:
+                x = lp['bounding_box_px']['x']
+                y = lp['bounding_box_px']['y']
+                w = lp['bounding_box_px']['width']
+                h = lp['bounding_box_px']['height']
+                agnosticx, agnosticy, agnosticw, agnostich = self.computePixelsToMeterPlane(x, y, w, h,
+                                      camera.pose.intrinsics.intrinsics, camera.pose.intrinsics.distortion)
+                lp['bounding_box'] = {'x': agnosticx, 'y': agnosticy, 'width': agnosticw, 'height': agnostich}
       objects = self._createMovingObjectsForDetection(detection_type, detections, when, camera)
       self.finishProcessing(detection_type, when, objects)
     return True
