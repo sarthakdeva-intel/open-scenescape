@@ -10,10 +10,6 @@ networks:
 secrets:
   root-cert:
     file: ${SECRETSDIR}/certs/scenescape-ca.pem
-  broker-cert:
-    file: ${SECRETSDIR}/certs/scenescape-broker.crt
-  broker-key:
-    file: ${SECRETSDIR}/certs/scenescape-broker.key
   web-cert:
     file: ${SECRETSDIR}/certs/scenescape-web.crt
   web-key:
@@ -28,8 +24,6 @@ secrets:
     file: ${SECRETSDIR}/certs/scenescape-vdms-s.key
   django:
     file: ${SECRETSDIR}/django
-  percebro.auth:
-    file: ${SECRETSDIR}/percebro.auth
   controller.auth:
     file: ${SECRETSDIR}/controller.auth
   browser.auth:
@@ -46,21 +40,20 @@ services:
     #   - 123:123/udp
     restart: on-failure
 
-  # uncomment this section to use eclipe mosquitto broker
   broker:
     image: eclipse-mosquitto
-    ports:
-      - "1883:1883"
+    # ports:
+    #   - "1883:1883"
     configs:
-     - source: mosquitto-secure
-       target: /mosquitto/config/mosquitto.conf
+      - source: mosquitto-secure
+        target: /mosquitto/config/mosquitto.conf
     volumes:
       - ${SECRETSDIR}:/mosquitto/secrets
     networks:
       scenescape:
         aliases:
-         - broker.scenescape.intel.com
-    user: "${UID}:${GID}"
+          - broker.scenescape.intel.com
+    user: "${UID:-1000}:${GID:-1000}"
 
   pgserver:
     image: scenescape-manager:${VERSION:-latest}
@@ -85,9 +78,7 @@ services:
     secrets:
       - django
       - controller.auth
-      - percebro.auth
       - browser.auth
-      - calibration.auth
     restart: always
 
   web:
@@ -144,8 +135,8 @@ services:
         condition: service_started
       # vdms:
       #   condition: service_started
-    # mount the trackerconfig file to the container
     command: controller --broker broker.scenescape.intel.com --ntp ntpserv
+    # mount the trackerconfig file to the container
     configs:
       - source: tracker-config
         target: /home/scenescape/SceneScape/tracker-config.json
@@ -182,19 +173,16 @@ services:
   #       target: certs/scenescape-vdms-s.key
   #   restart: always
 
-  deepscenario:
-    image: mydls-openvino25
-    build:
-      context: ./dlstreamer-pipeline-server/deepscenario
-      dockerfile: Dockerfile
+  retail-video:
+    image: docker.io/intel/dlstreamer-pipeline-server:3.0.0
     privileged: true
     networks:
       scenescape:
     tty: true
     entrypoint: ["./run.sh"]
     ports:
-      - "8082:8080"
-      - "8556:8554"
+      - "8080:8080"
+      - "8554:8554"
     devices:
       - "/dev/dri:/dev/dri"
     depends_on:
@@ -202,6 +190,19 @@ services:
         condition: service_started
       ntpserv:
         condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--spider",
+          "--server-response",
+          "http://localhost:8080/pipelines",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     environment:
       - RUN_MODE=EVA
       - DETECTION_DEVICE=CPU
@@ -210,24 +211,84 @@ services:
       - RTSP_PORT=8554
       - REST_SERVER_PORT=8080
       - GENICAM=Balluff
-      - GST_DEBUG=GST_TRACER:7
+      - GST_DEBUG="1,gencamsrc:2"
       - ADD_UTCTIME_TO_METADATA=true
       - APPEND_PIPELINE_NAME_TO_PUBLISHER_TOPIC=false
       - MQTT_HOST=broker.scenescape.intel.com
       - MQTT_PORT=1883
+    configs:
+      - source: retail-config
+        target: /home/pipeline-server/config.json
+      - source: person-detection-retail-config
+        target: /home/pipeline-server/models/object_detection/person/person-detection-retail-0013.json
     volumes:
-      - ./dlstreamer-pipeline-server/deepscenario-config.json:/home/pipeline-server/config.json
       - ./dlstreamer-pipeline-server/user_scripts:/home/pipeline-server/user_scripts
       - vol-dlstreamer-pipeline-server-pipeline-root:/var/cache/pipeline_root:uid=1999,gid=1999
-      - ./sample_data:/home/pipeline-server/videos
-      - ./model_installer/models/public/ch_PP-OCRv4_rec_infer/FP32:/home/pipeline-server/models/ch_PP-OCRv4_rec_infer/FP32
-      - ./model_installer/models/public/yolov8_license_plate_detector/FP32:/home/pipeline-server/models/yolov8_license_plate_detector
+      - vol-sample-data:/home/pipeline-server/videos
+      - vol-models:/home/pipeline-server/models
+    secrets:
+      - source: root-cert
+        target: certs/scenescape-ca.pem
+
+  queuing-video:
+    image: docker.io/intel/dlstreamer-pipeline-server:3.0.0
+    privileged: true
+    networks:
+      scenescape:
+    tty: true
+    entrypoint: ["./run.sh"]
+    ports:
+      - "8081:8080"
+      - "8555:8554"
+    devices:
+      - "/dev/dri:/dev/dri"
+    depends_on:
+      broker:
+        condition: service_started
+      ntpserv:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--spider",
+          "--server-response",
+          "http://localhost:8080/pipelines",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    environment:
+      - RUN_MODE=EVA
+      - DETECTION_DEVICE=CPU
+      - CLASSIFICATION_DEVICE=CPU
+      - ENABLE_RTSP=true
+      - RTSP_PORT=8554
+      - REST_SERVER_PORT=8080
+      - GENICAM=Balluff
+      - GST_DEBUG="1,gencamsrc:2"
+      - ADD_UTCTIME_TO_METADATA=true
+      - APPEND_PIPELINE_NAME_TO_PUBLISHER_TOPIC=false
+      - MQTT_HOST=broker.scenescape.intel.com
+      - MQTT_PORT=1883
+    configs:
+      - source: queuing-config
+        target: /home/pipeline-server/config.json
+      - source: person-detection-queing-config
+        target: /home/pipeline-server/models/object_detection/person/person-detection-retail-0013.json
+    volumes:
+      - ./dlstreamer-pipeline-server/user_scripts:/home/pipeline-server/user_scripts
+      - vol-dlstreamer-pipeline-server-pipeline-root:/var/cache/pipeline_root:uid=1999,gid=1999
+      - vol-sample-data:/home/pipeline-server/videos
+      - vol-models:/home/pipeline-server/models
     secrets:
       - source: root-cert
         target: certs/scenescape-ca.pem
 
   camcalibration:
-    image: scenescape-camcalibration:${VERSION:-latest}
+    image: scenescape-camcalibration
     init: true
     networks:
       scenescape:
@@ -258,23 +319,19 @@ services:
       - calibration.auth
     restart: always
 
-  # ovms: # Need to uncomment this section to use ovms
-  #   image: openvino/model_server:2024.1-gpu
-  #   user: "${UID}:${GID}"
-  #   networks:
-  #     scenescape:
-  #   command: --config_path /opt/ml/ovms-config.json --port 9000 --rest_port 9001 --cache_dir /models/ovms/cache
-  #   volumes:
-  #    - vol-models:/opt/ml/
-  #    - vol-models:/models/
-  #   restart: always
-
 configs:
-  # uncomment this section when using eclipe mosquitto broker
   mosquitto-secure:
     file: ./dlstreamer-pipeline-server/mosquitto/mosquitto-secure.conf
   tracker-config:
     file: ./controller/config/tracker-config.json
+  retail-config:
+    file: ./dlstreamer-pipeline-server/retail-config.json
+  person-detection-retail-config:
+    file: ./dlstreamer-pipeline-server/model-proc-files/person-detection-retail-0013.json
+  queuing-config:
+    file: ./dlstreamer-pipeline-server/queuing-config.json
+  person-detection-queing-config:
+    file: ./dlstreamer-pipeline-server/model-proc-files/person-detection-retail-0013.json
 
 volumes:
   vol-db:
