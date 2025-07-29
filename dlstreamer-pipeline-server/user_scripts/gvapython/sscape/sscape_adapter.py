@@ -187,11 +187,9 @@ class PostInferenceDataPublish:
       else:
         cindex = 2
       
-      # Handle car objects with special logic via utility
       if otype == "car":
         self.car_lp_processor.annotateCarLicensePlates(img, self.frame_level_data['objects'], objColors)
       else:
-        # Generic annotation for other object types
         for obj in objects:
           topleft_cv = (int(obj['bounding_box_px']['x']), int(obj['bounding_box_px']['y']))
           bottomright_cv = (int(obj['bounding_box_px']['x'] + obj['bounding_box_px']['width']),
@@ -242,13 +240,11 @@ class PostInferenceDataPublish:
         vaobj['id'] = len(objects[otype]) + 1
         objects[otype].append(vaobj)
     
-    # Apply domain-specific processing
     self.applyDomainSpecificProcessing(objects)
     self.frame_level_data['objects'] = objects
 
   def applyDomainSpecificProcessing(self, objects):
     """Apply domain-specific processing like car-license plate associations"""
-    # Check if we have cars and license plates - if so, apply association logic
     if 'car' in objects and 'license_plate' in objects:
       self.car_lp_processor.associateLicensePlates(objects)
 
