@@ -4,13 +4,10 @@
 import base64
 import json
 import logging
-import math
 import os
-import struct
 import time
 from collections import defaultdict
 from datetime import datetime
-from uuid import getnode as get_mac
 
 import cv2
 import ntplib
@@ -19,19 +16,21 @@ import paho.mqtt.client as mqtt
 from pytz import timezone
 
 from utils import publisher_utils as utils
+from sscape_utils import detectionPolicy, detection3DPolicy, \
+  reidPolicy, classificationPolicy, ocrPolicy
 from car_license_plate_utils import CarLicensePlateProcessor
 
 ROOT_CA = os.environ.get('ROOT_CA', '/run/secrets/certs/scenescape-ca.pem')
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
 TIMEZONE = "UTC"
 
-def getMACAddress():
-  if 'MACADDR' in os.environ:
-    return os.environ['MACADDR']
-
-  a = get_mac()
-  h = iter(hex(a)[2:].zfill(12))
-  return ":".join(i + next(h) for i in h)
+metadatapolicies = {
+"detectionPolicy": detectionPolicy,
+"detection3DPolicy": detection3DPolicy,
+"reidPolicy": reidPolicy,
+"classificationPolicy": classificationPolicy,
+"ocrPolicy": ocrPolicy
+}
 
 class PostDecodeTimestampCapture:
   def __init__(self, ntpServer=None):
@@ -74,62 +73,6 @@ class PostDecodeTimestampCapture:
       'fps': self.fps
     }))
     return True
-
-def computeObjBoundingBoxParams(pobj, fw, fh, x, y, w, h, xminnorm=None, yminnorm=None, xmaxnorm=None, ymaxnorm=None):
-  # use normalized bounding box for calculating center of mass
-  xmax, xmin = int(xmaxnorm * fw), int(xminnorm * fw)
-  ymax, ymin = int(ymaxnorm * fh), int(yminnorm * fh)
-  comw, comh = (xmax - xmin) / 3, (ymax - ymin) / 4
-
-  pobj.update({
-    'center_of_mass': {'x': int(xmin + comw), 'y': int(ymin + comh), 'width': comw, 'height': comh},
-    'bounding_box_px': {'x': x, 'y': y, 'width': w, 'height': h}
-  })
-
-  return
-
-def detectionPolicy(pobj, item, fw, fh):
-  pobj.update({
-    'category': item['detection']['label'],
-    'confidence': item['detection']['confidence']
-  })
-  computeObjBoundingBoxParams(pobj, fw, fh, item['x'], item['y'], item['w'],item['h'],
-                              item['detection']['bounding_box']['x_min'],
-                              item['detection']['bounding_box']['y_min'],
-                              item['detection']['bounding_box']['x_max'],
-                              item['detection']['bounding_box']['y_max'])
-  return
-
-def reidPolicy(pobj, item, fw, fh):
-  detectionPolicy(pobj, item, fw, fh)
-  reid_vector = item['tensors'][1]['data']
-  # following code snippet is from percebro/modelchain.py
-  v = struct.pack("256f",*reid_vector)
-  pobj['reid'] = base64.b64encode(v).decode('utf-8')
-  return
-
-def classificationPolicy(pobj, item, fw, fh):
-  detectionPolicy(pobj, item, fw, fh)
-  # todo: add configurable parameters(set tensor name)
-  pobj['category'] = item['classification_layer_name:efficientnet-b0/model/head/dense/BiasAdd:0']['label']
-  return
-
-def ocrPolicy(pobj, item, fw, fh):
-  """Extract OCR text from classification layers"""
-  detectionPolicy(pobj, item, fw, fh)
-  pobj['text'] = ''
-  for key, value in item.items():
-    if key.startswith('classification_layer') and isinstance(value, dict) and 'label' in value:
-      pobj['text'] = value['label']
-      break
-  return
-
-metadatapolicies = {
-"detectionPolicy": detectionPolicy,
-"reidPolicy": reidPolicy,
-"classificationPolicy": classificationPolicy,
-"ocrPolicy": ocrPolicy
-}
 
 class PostInferenceDataPublish:
   def __init__(self, cameraid, metadatagenpolicy='detectionPolicy', publish_image=False):
@@ -175,8 +118,6 @@ class PostInferenceDataPublish:
 
   def annotateObjects(self, img):
     objColors = ((0, 0, 255), (255, 128, 128), (207, 83, 294), (31, 156, 238))
-    
-    # Generic object annotation
     for otype, objects in self.frame_level_data['objects'].items():
       if otype == "person":
         cindex = 0
@@ -186,19 +127,20 @@ class PostInferenceDataPublish:
         cindex = 1
       else:
         cindex = 2
-      
-      if otype == "car":
-        self.car_lp_processor.annotateCarLicensePlates(img, self.frame_level_data['objects'], objColors)
-      else:
-        for obj in objects:
-          topleft_cv = (int(obj['bounding_box_px']['x']), int(obj['bounding_box_px']['y']))
-          bottomright_cv = (int(obj['bounding_box_px']['x'] + obj['bounding_box_px']['width']),
-                          int(obj['bounding_box_px']['y'] + obj['bounding_box_px']['height']))
-          cv2.rectangle(img, topleft_cv, bottomright_cv, objColors[cindex], 2)
+  
+      for obj in objects:
+        if 'translation' in obj and 'rotation' in obj:
+          intrinsics = self.frame_level_data.get('file_intrinsics')        
+          self.annotate3DObject(img, obj, intrinsics)
+          continue
+        print(obj)
+        topleft_cv = (int(obj['bounding_box_px']['x']), int(obj['bounding_box_px']['y']))
+        bottomright_cv = (int(obj['bounding_box_px']['x'] + obj['bounding_box_px']['width']),
+                        int(obj['bounding_box_px']['y'] + obj['bounding_box_px']['height']))
+        cv2.rectangle(img, topleft_cv, bottomright_cv, objColors[cindex], 2)
     return
 
   def annotateFPS(self, img, fpsval):
-    # code snippet is taken from annotateFPS method in percebro/videoframe.py
     fpsStr = f'FPS {fpsval:.1f}'
     scale = int((img.shape[0] + 479) / 480)
     cv2.putText(img, fpsStr, (0, 30 * scale), cv2.FONT_HERSHEY_SIMPLEX,
@@ -230,6 +172,8 @@ class PostInferenceDataPublish:
       'debug_processing_time': now - float(gvadata['timestamp_for_next_block']),
       'rate': float(gvadata['fps'])
     })
+    if 'file_intrinsics' in gvadata:
+      self.frame_level_data['file_intrinsics'] = gvadata['file_intrinsics']
     objects = defaultdict(list)
     if 'objects' in gvadata and len(gvadata['objects']) > 0:
       framewidth, frameheight = gvadata['resolution']['width'], gvadata['resolution']['height']
@@ -239,14 +183,15 @@ class PostInferenceDataPublish:
         otype = vaobj['category']
         vaobj['id'] = len(objects[otype]) + 1
         objects[otype].append(vaobj)
-    
-    self.applyDomainSpecificProcessing(objects)
+
+    # self.applyDomainSpecificProcessing(objects)
     self.frame_level_data['objects'] = objects
 
   def applyDomainSpecificProcessing(self, objects):
     """Apply domain-specific processing like car-license plate associations"""
     if 'car' in objects and 'license_plate' in objects:
       self.car_lp_processor.associateLicensePlates(objects)
+    return
 
   def processFrame(self, frame):
     if self.client.is_connected():

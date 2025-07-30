@@ -3,6 +3,7 @@
 
 import cv2
 
+VEHICLE_BOUNDS_BUFFER = 0.15
 
 class CarLicensePlateProcessor:
     """Utility class for processing car and license plate associations and annotations"""
@@ -27,8 +28,8 @@ class CarLicensePlateProcessor:
             # Expand car bounds by 15% to account for license plates on bumpers
             car_width = car_x2 - car_x1
             car_height = car_y2 - car_y1
-            margin_x = car_width * 0.15
-            margin_y = car_height * 0.15
+            margin_x = car_width * VEHICLE_BOUNDS_BUFFER
+            margin_y = car_height * VEHICLE_BOUNDS_BUFFER
             
             expanded_car_x1 = car_x1 - margin_x
             expanded_car_y1 = car_y1 - margin_y
@@ -60,8 +61,6 @@ class CarLicensePlateProcessor:
         
         if not cars or not license_plates:
             return
-        
-        # print(f"Associating {len(cars)} cars with {len(license_plates)} license plates")
         
         used_plates = set()
         associations_created = 0
@@ -95,26 +94,18 @@ class CarLicensePlateProcessor:
                 used_plates.add(plate_idx)
                 associations_created += 1
                 
-                # print(f"Associated car {car_idx} with license plate {plate_idx} (score: {score:.2f}, text: '{plate.get('text', '')}')")
-            
             # Add license plates to car object
             if associated_plates:
                 car['license_plates'] = associated_plates
         
-        # Remove associated license plates from the main objects list
-        if used_plates:
-            remaining_plates = [plate for idx, plate in enumerate(license_plates) if idx not in used_plates]
-            if remaining_plates:
-                objects['license_plate'] = remaining_plates
-                # print(f"Kept {len(remaining_plates)} unassociated license plates in main objects list")
-            else:
-                # Remove license_plate category entirely if all plates were associated
-                if 'license_plate' in objects:
-                    del objects['license_plate']
-                # print("All license plates were associated with cars, removed license_plate category from main objects list")
-        
-        # print(f"Created {associations_created} license plate associations")
+        # remove all license plates as they have been associated
+        remaining_plates = [plate for idx, plate in enumerate(license_plates) if idx not in used_plates]
+        if remaining_plates:
+            print(f"{len(remaining_plates)} unassociated license plates")
+        del objects['license_plate']
+
         self.associations_created = associations_created
+        return
 
     def annotateCarLicensePlates(self, img, objects, obj_colors):
         """Annotate cars and their associated license plates"""
