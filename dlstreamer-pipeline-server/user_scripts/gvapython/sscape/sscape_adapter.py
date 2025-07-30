@@ -16,7 +16,7 @@ import paho.mqtt.client as mqtt
 from pytz import timezone
 
 from utils import publisher_utils as utils
-from sscape_utils import detectionPolicy, detection3DPolicy, \
+from sscape_utils import getMACAddress, detectionPolicy, detection3DPolicy, \
   reidPolicy, classificationPolicy, ocrPolicy
 from car_license_plate_utils import CarLicensePlateProcessor
 
@@ -118,6 +118,13 @@ class PostInferenceDataPublish:
 
   def annotateObjects(self, img):
     objColors = ((0, 0, 255), (255, 128, 128), (207, 83, 294), (31, 156, 238))
+    
+    # Special handling for car-license plate associations
+    if 'car' in self.frame_level_data['objects']:
+      intrinsics = self.frame_level_data.get('file_intrinsics')
+      self.car_lp_processor.annotateCarLicensePlates(img, self.frame_level_data['objects'], objColors, intrinsics=intrinsics)
+      return
+    
     for otype, objects in self.frame_level_data['objects'].items():
       if otype == "person":
         cindex = 0
@@ -184,13 +191,18 @@ class PostInferenceDataPublish:
         vaobj['id'] = len(objects[otype]) + 1
         objects[otype].append(vaobj)
 
-    # self.applyDomainSpecificProcessing(objects)
+    # Apply domain-specific processing (e.g., car-license plate associations)
+    self.applyDomainSpecificProcessing(objects)
     self.frame_level_data['objects'] = objects
 
   def applyDomainSpecificProcessing(self, objects):
     """Apply domain-specific processing like car-license plate associations"""
     if 'car' in objects and 'license_plate' in objects:
-      self.car_lp_processor.associateLicensePlates(objects)
+      # Get camera intrinsics for 3D processing
+      intrinsics = self.frame_level_data.get('file_intrinsics')
+      inference_keys = self.car_lp_processor.associateLicensePlates(objects, intrinsics=intrinsics)
+      if inference_keys:
+        self.frame_level_data['inference_keys'] = inference_keys
     return
 
   def processFrame(self, frame):

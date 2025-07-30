@@ -294,6 +294,15 @@
               "$ref": "#/definitions/detection"
             }
           }
+        },
+        "inference_keys": {
+          "title": "Inference Keys",
+          "type": "array",
+          "description": "Array of inference keys associated with the detector output.",
+          "items": {
+            "type": "string"
+          },
+          "examples": [["license_plate"], ["face", "emotion"]]
         }
       },
       "required": ["timestamp", "id", "objects"]
